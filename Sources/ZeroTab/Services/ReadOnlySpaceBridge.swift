@@ -82,7 +82,7 @@ final class ReadOnlySpaceBridge {
     func membership(of id: UInt32?) -> Set<UInt64>? {
         guard available, let connection, let windowSpaces, let id,
               let raw = windowSpaces(connection(), 7, [NSNumber(value: id)] as CFArray)?.takeRetainedValue()
-                as? [NSNumber], !raw.isEmpty else { return nil }
+                as? [NSNumber] else { return nil }
         return Set(raw.map(\.uint64Value))
     }
 }

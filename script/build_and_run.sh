@@ -30,6 +30,7 @@ mkdir -p "$APP_BUNDLE/Contents/MacOS" "$APP_BUNDLE/Contents/Resources"
 cp "$BIN_DIR/ZeroTab" "$APP_BUNDLE/Contents/MacOS/ZeroTab.new"
 mv -f "$APP_BUNDLE/Contents/MacOS/ZeroTab.new" "$APP_BUNDLE/Contents/MacOS/ZeroTab"
 cp "$ROOT_DIR/Resources/Info.plist" "$APP_BUNDLE/Contents/Info.plist"
+cp "$ROOT_DIR/Resources/AppIcon.icns" "$APP_BUNDLE/Contents/Resources/AppIcon.icns"
 chmod +x "$APP_BUNDLE/Contents/MacOS/ZeroTab"
 # Use a local signing identity when configured; ad-hoc signing works for local development.
 /usr/bin/codesign --force --sign "${ZEROTAB_SIGN_IDENTITY:--}" "$APP_BUNDLE"

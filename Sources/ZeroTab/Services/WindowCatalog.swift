@@ -53,13 +53,15 @@ final class WindowCatalog: @unchecked Sendable {
         let focused = AXAccess.element(app, kAXFocusedWindowAttribute)
         let bridge = ReadOnlySpaceBridge.shared
         let focusedID = focused.flatMap { bridge.identifier(of: $0) }
-        let isChrome = NSRunningApplication(processIdentifier: pid)?.bundleIdentifier == "com.google.Chrome"
+        guard let runningApp = NSRunningApplication(processIdentifier: pid), !runningApp.isTerminated else {
+            return .unavailable("该应用已退出。")
+        }
         let main = AXAccess.element(app, kAXMainWindowAttribute)
         var elements = published
         for candidate in [focused, main].compactMap({ $0 }) {
             if !elements.contains(where: { CFEqual($0, candidate) }) { elements.append(candidate) }
         }
-        let publishedIDs = Set(elements.compactMap { bridge.identifier(of: $0) })
+        let publishedIDs = Set(published.compactMap { bridge.identifier(of: $0) })
         let old = cache[pid] ?? []
         // Retained elements can remain valid on other Spaces even when the app omits them from kAXWindows.
         for record in old where !elements.contains(where: { CFEqual($0, record.element) }) {
@@ -71,11 +73,12 @@ final class WindowCatalog: @unchecked Sendable {
         }
         let snapshot = SpaceProvider.snapshot()
         let represented = Set(elements.compactMap { bridge.identifier(of: $0) })
-        let missing = SpaceProvider.otherSpaceCandidates(pid: pid, topology: snapshot.topology).subtracting(represented)
+        let missing = SpaceProvider.otherSpaceCandidates(pid: pid, snapshot: snapshot).subtracting(represented)
         elements.append(contentsOf: discovery.find(pid: pid, missing: missing, automatic: automatic))
         var records: [WindowRecord] = []
         var seenIDs = Set<UInt32>()
         var suppressed = 0
+        var notPresented = 0
         for element in elements {
             let windowID = bridge.identifier(of: element)
             if let windowID, !seenIDs.insert(windowID).inserted { continue }
@@ -90,7 +93,9 @@ final class WindowCatalog: @unchecked Sendable {
             }
             guard role == kAXWindowRole else { continue }
             let subrole = values[kAXSubroleAttribute] as? String
-            if subrole == kAXFloatingWindowSubrole || subrole == kAXSystemFloatingWindowSubrole { continue }
+            if subrole == kAXFloatingWindowSubrole || subrole == kAXSystemFloatingWindowSubrole {
+                continue
+            }
             let previous = old.first {
                 if let windowID, let oldID = $0.windowID { return windowID == oldID }
                 return CFEqual($0.element, element)
@@ -107,21 +112,24 @@ final class WindowCatalog: @unchecked Sendable {
             let placement = SpaceProvider.placement(windowID: windowID, pid: pid, frame: frame, snapshot: snapshot)
             let title = (values[kAXTitleAttribute] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
             let hasTitle = title?.isEmpty == false
-            let remoteOnly = discovery.contains(pid: pid, windowID: windowID) && !publishedIDs.contains(windowID ?? 0)
-            guard WindowAdmission.accepts(isChrome: isChrome, remoteOnly: remoteOnly,
+            let isPublished = windowID.map { publishedIDs.contains($0) }
+                ?? published.contains(where: { CFEqual($0, element) })
+            guard WindowAdmission.accepts(isPublished: isPublished,
                 standardWindow: subrole == kAXStandardWindowSubrole, hasTitle: hasTitle) else {
                 suppressed += 1; continue
+            }
+            let minimizedValue = values[kAXMinimizedAttribute] as? Bool
+            if WindowPresence.isNotPresented(location: placement.0, onScreen: snapshot.onScreen(windowID: windowID),
+                minimized: minimizedValue, applicationHidden: runningApp.isHidden, hasAssignedSpace: placement.2.map { !$0.isEmpty }) {
+                notPresented += 1; continue
             }
             records.append(WindowRecord(
                 id: previous?.id ?? UUID(), pid: pid, element: element, windowID: windowID,
                 title: title?.isEmpty == false ? title! : "未命名窗口 \(records.count + 1)",
-                minimized: (values[kAXMinimizedAttribute] as? Bool) ?? false,
+                minimized: minimizedValue ?? false,
                 frame: frame, location: placement.0, spaceLabel: placement.1,
                 attention: rank, focused: isFocused
             ))
-        }
-        if records.isEmpty && SpaceProvider.mayHaveUnresolvedWindows(pid: pid) {
-            return .unavailable("该应用可能还有未列出的窗口，已避免重复新建。")
         }
         // Prevent indistinguishable duplicate labels without pretending to know document paths.
         let groups = Dictionary(grouping: records, by: \.title)
@@ -141,7 +149,7 @@ final class WindowCatalog: @unchecked Sendable {
         let current = records.filter { $0.location == .current }.count
         let other = records.filter { $0.location == .other }.count
         let unknown = records.count - current - other
-        logger.info("Window membership: current=\(current), other=\(other), unknown=\(unknown), suppressedHelpers=\(suppressed)")
+        logger.info("Window membership: pid=\(pid), current=\(current), other=\(other), unknown=\(unknown), suppressedHelpers=\(suppressed), notPresented=\(notPresented)")
         return .success(records)
     }
 }

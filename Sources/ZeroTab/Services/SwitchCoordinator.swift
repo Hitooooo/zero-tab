@@ -9,7 +9,8 @@ final class SwitchCoordinator {
         let created = SwitcherPanelController(); panelStorage = created; return created
     }
     let catalog = WindowCatalog()
-    lazy var activation = ActivationService(catalog: catalog)
+    private let activation = ActivationService()
+    private let applicationOpener = ApplicationOpener()
     private let focusObserver = FocusObserver()
     private let model: AppModel
     private var applications: [NSRunningApplication] = []
@@ -21,7 +22,6 @@ final class SwitchCoordinator {
     private var loading = false
     private var sessionActive = false
     private var sessionMode = SwitchMode.applications
-    private var sessionApp: NSRunningApplication?
     private var observers: [NSObjectProtocol] = []
     private var previewMonitor: Any?
     private var clickMonitor: Any?
@@ -29,12 +29,12 @@ final class SwitchCoordinator {
     private var previewing = false
     private var focusRefresh: DispatchWorkItem?
     private var observingPID: pid_t?
-    private var didWarmup = false
     private let logger = Logger(subsystem: "dev.hitomeng.ZeroTab", category: "Switcher")
 
     init(model: AppModel) {
         self.model = model
         activation.onFeedback = { [weak model] in model?.lastFeedback = $0 }
+        applicationOpener.onFeedback = { [weak model] in model?.lastFeedback = $0 }
         refreshApps()
         let center = NSWorkspace.shared.notificationCenter
         for name in [NSWorkspace.didLaunchApplicationNotification, NSWorkspace.didTerminateApplicationNotification, NSWorkspace.didActivateApplicationNotification] {
@@ -51,14 +51,7 @@ final class SwitchCoordinator {
 
     func permissionsChanged() {
         guard model.accessibilityGranted else {
-            focusObserver.stop(); observingPID = nil; didWarmup = false; return
-        }
-        if !didWarmup {
-            didWarmup = true
-            let priorityApps: Set<String> = ["com.google.Chrome", "com.apple.finder", "com.tencent.xinWeChat", "com.kingsoft.wpsoffice.mac"]
-            for app in applications where priorityApps.contains(app.bundleIdentifier ?? "") {
-                catalog.query(pid: app.processIdentifier) { _ in }
-            }
+            focusObserver.stop(); observingPID = nil; return
         }
         if let app = NSWorkspace.shared.frontmostApplication,
            app.processIdentifier != ProcessInfo.processInfo.processIdentifier {
@@ -112,7 +105,7 @@ final class SwitchCoordinator {
 
     private func begin(_ mode: SwitchMode, backwards: Bool) {
         cancel()
-        activation.cancelPending()
+        cancelPendingActivation()
         generation &+= 1
         let token = generation
         sessionMode = mode; sessionActive = true
@@ -129,12 +122,16 @@ final class SwitchCoordinator {
         } else {
             guard let app = NSWorkspace.shared.frontmostApplication,
                   app.processIdentifier != ProcessInfo.processInfo.processIdentifier else { cancel(); return }
-            sessionApp = app; loading = true
+            loading = true
             catalog.query(pid: app.processIdentifier, continueDiscovery: true) { [weak self] result in
                 guard let self, self.sessionActive, self.generation == token, !app.isTerminated else { return }
                 switch result {
                 case .unavailable(let text): self.model.lastFeedback = text; self.cancel()
                 case .success(let windows):
+                    guard !windows.isEmpty else {
+                        self.model.lastFeedback = "当前应用没有可切换的窗口，可用 ⌘ Tab 重新打开应用。"
+                        self.cancel(); return
+                    }
                     let ranked = windows.enumerated().map {
                         RankedItem(id: $0.element.id, location: $0.element.location, attention: $0.element.attention, ordinal: $0.offset)
                     }
@@ -180,10 +177,14 @@ final class SwitchCoordinator {
         case .commit:
             let items = panel.presentation.items
             let target = items.indices.contains(selection.index) ? items[selection.index] : nil
-            let emptyApp = items.isEmpty && sessionMode == .windows ? sessionApp : nil
+            let mode = sessionMode
             cancel()
-            if let target { activation.activate(target) }
-            else if let emptyApp { activation.reopen(emptyApp) }
+            guard let target else { return }
+            switch mode {
+            case .applications: applicationOpener.open(target.application)
+            case .windows:
+                if let window = target.window { activation.activate(window, app: target.application) }
+            }
         case .cancel: cancel()
         case .begin: break
         }
@@ -192,7 +193,7 @@ final class SwitchCoordinator {
 
     func cancel() {
         if previewing { logger.info("Preview closed") }
-        generation &+= 1; sessionActive = false; loading = false; sessionApp = nil
+        generation &+= 1; sessionActive = false; loading = false
         pendingActions.removeAll(); panelStorage?.hide()
         if let previewMonitor { NSEvent.removeMonitor(previewMonitor) }
         if let clickMonitor { NSEvent.removeMonitor(clickMonitor) }
@@ -200,8 +201,13 @@ final class SwitchCoordinator {
         previewMonitor = nil; clickMonitor = nil; localClickMonitor = nil; previewing = false
     }
 
+    func cancelPendingActivation() {
+        applicationOpener.cancelPending()
+        activation.cancelPending()
+    }
+
     func preview() {
-        cancel(); refreshApps()
+        cancel(); cancelPendingActivation(); refreshApps()
         guard let screen = NSScreen.main ?? NSScreen.screens.first else { return }
         panel.presentation.configure(items: applications.map { makeItem(app: $0) }, mode: .applications,
             overflow: model.preferences.overflow, screen: screen)

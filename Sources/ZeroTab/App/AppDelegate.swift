@@ -28,7 +28,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         model.refresh()
         let center = NSWorkspace.shared.notificationCenter
         workspaceTokens.append(center.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { [weak self] _ in
-            self?.input.stop(); self?.coordinator.cancel(); self?.model.inputRunning = false
+            self?.input.stop(); self?.coordinator.cancel(); self?.coordinator.cancelPendingActivation()
+            self?.model.inputRunning = false
         })
         workspaceTokens.append(center.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in self?.model.refresh() })
         let loginLaunch = NSAppleEventManager.shared().currentAppleEvent?
@@ -47,7 +48,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         permissionTimer?.invalidate()
-        input.stop(); coordinator.cancel(); coordinator.activation.cancelPending()
+        input.stop(); coordinator.cancel(); coordinator.cancelPendingActivation()
         workspaceTokens.forEach { NSWorkspace.shared.notificationCenter.removeObserver($0) }
         logger.info("Application stopped; no system hotkey preferences modified")
     }
@@ -57,7 +58,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         refreshing = true
         defer { refreshing = false }
         if model.paused || !model.accessibilityGranted {
-            input.stop(); coordinator.cancel(); model.inputRunning = false
+            input.stop(); coordinator.cancel(); coordinator.cancelPendingActivation(); model.inputRunning = false
             model.status = model.paused ? "切换已暂停" : "请先允许辅助功能权限"
         } else {
             let running = input.start()
@@ -124,7 +125,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     @objc func showSettings() {
-        coordinator.cancel()
+        coordinator.cancel(); coordinator.cancelPendingActivation()
         if settingsWindow == nil {
             let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 580, height: 460),
                 styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)

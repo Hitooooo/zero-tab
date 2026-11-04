@@ -5,9 +5,10 @@
   <key>CFBundleIdentifier</key><string>dev.hitomeng.ZeroTab</string>
   <key>CFBundleName</key><string>ZeroTab</string>
   <key>CFBundleDisplayName</key><string>ZeroTab</string>
+  <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleShortVersionString</key><string>0.1.0</string>
-  <key>CFBundleVersion</key><string>1</string>
+  <key>CFBundleShortVersionString</key><string>0.1.1</string>
+  <key>CFBundleVersion</key><string>6</string>
   <key>LSMinimumSystemVersion</key><string>27.0</string>
   <key>LSUIElement</key><true/>
   <key>LSMultipleInstancesProhibited</key><true/>

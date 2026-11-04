@@ -24,9 +24,6 @@ final class CrossSpaceDiscovery {
 
     func forget(pid: pid_t) { cursors[pid] = nil; resolved[pid] = nil }
     func cachedElements(pid: pid_t) -> [AXUIElement] { Array((resolved[pid] ?? [:]).values) }
-    func contains(pid: pid_t, windowID: UInt32?) -> Bool {
-        guard let windowID else { return false }; return resolved[pid]?[windowID] != nil
-    }
     func needsBackgroundWork(pid: pid_t) -> Bool { createElement != nil && cursors[pid]?.needsBackgroundWork == true }
 
     func find(pid: pid_t, missing: Set<UInt32>, automatic: Bool) -> [AXUIElement] {
