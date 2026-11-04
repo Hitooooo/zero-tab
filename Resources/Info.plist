@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>CFBundleExecutable</key><string>ZeroTab</string>
+  <key>CFBundleIdentifier</key><string>dev.hitomeng.ZeroTab</string>
+  <key>CFBundleName</key><string>ZeroTab</string>
+  <key>CFBundleDisplayName</key><string>ZeroTab</string>
+  <key>CFBundlePackageType</key><string>APPL</string>
+  <key>CFBundleShortVersionString</key><string>0.1.0</string>
+  <key>CFBundleVersion</key><string>1</string>
+  <key>LSMinimumSystemVersion</key><string>27.0</string>
+  <key>LSUIElement</key><true/>
+  <key>LSMultipleInstancesProhibited</key><true/>
+  <key>NSPrincipalClass</key><string>NSApplication</string>
+  <key>NSHighResolutionCapable</key><true/>
+  <key>NSAccessibilityUsageDescription</key><string>ZeroTab 使用辅助功能读取窗口名称、恢复及切换到你选择的窗口，不采集窗口截图。</string>
+</dict></plist>
