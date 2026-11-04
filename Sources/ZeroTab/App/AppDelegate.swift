@@ -13,6 +13,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var refreshing = false
     private var permissionTimer: Timer?
 
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        // SwiftPM bundles have no asset catalog. Load the bundled icon directly so
+        // the Dock also gets it when this LSUIElement app becomes a regular app.
+        if let url = Bundle.main.url(forResource: "AppIcon", withExtension: "icns"),
+           let icon = NSImage(contentsOf: url) {
+            NSApp.applicationIconImage = icon
+        }
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         configureMenu()
         model.preferences.onAppearanceChange = { [weak self] in self?.applyAppearance() }

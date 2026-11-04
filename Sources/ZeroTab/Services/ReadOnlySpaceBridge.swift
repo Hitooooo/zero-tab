@@ -42,6 +42,7 @@ final class ReadOnlySpaceBridge {
         var visible = Set<UInt64>()
         var known = Set<UInt64>()
         var labels: [UInt64: String] = [:]
+        var badges: [UInt64: String] = [:]
         var order: [UInt64] = []
         for (displayIndex, display) in raw.enumerated() {
             guard let current = display["Current Space"] as? [String: Any],
@@ -58,14 +59,18 @@ final class ReadOnlySpaceBridge {
                 if (space["type"] as? NSNumber)?.intValue == 0 {
                     desktopIndex += 1
                     labels[id.uint64Value] = "\(prefix)桌面 \(desktopIndex)"
+                    badges[id.uint64Value] = SpaceBadge.label(number: desktopIndex,
+                        display: raw.count > 1 ? displayIndex + 1 : nil)
                 } else {
                     fullscreenIndex += 1
                     labels[id.uint64Value] = "\(prefix)全屏空间 \(fullscreenIndex)"
+                    badges[id.uint64Value] = SpaceBadge.label(number: fullscreenIndex,
+                        display: raw.count > 1 ? displayIndex + 1 : nil, fullscreen: true)
                 }
             }
         }
         guard !visible.isEmpty, visible.isSubset(of: known) else { return nil }
-        return SpaceTopology(visible: visible, known: known, labels: labels, order: order)
+        return SpaceTopology(visible: visible, known: known, labels: labels, order: order, badges: badges)
     }
 
     func identifier(of element: AXUIElement) -> UInt32? {

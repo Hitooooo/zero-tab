@@ -203,7 +203,7 @@ final class SwitchCoordinator {
             selection.cycle(delta)
         case .move(let direction):
             panel.presentation.shouldScrollSelection = true
-            selection.move(direction, linear: sessionMode == .windows || !panel.presentation.isGrid)
+            selection.move(direction, linear: !panel.presentation.isGrid)
         case .commit:
             let items = panel.presentation.items
             let target = items.indices.contains(selection.index) ? items[selection.index] : nil

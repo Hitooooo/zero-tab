@@ -46,7 +46,7 @@ struct SettingsView: View {
                 LabeledContent("移动选择", value: "← ↑ ↓ →")
                 LabeledContent("确认 / 取消", value: "点击或松开修饰键 / Esc")
             }
-            Section("应用图标过多时") {
+            Section("应用或窗口图标过多时") {
                 Picker("排列方式", selection: $preferences.overflow) {
                     ForEach(OverflowLayout.allCases) { Text($0.title).tag($0) }
                 }

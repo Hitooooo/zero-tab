@@ -7,24 +7,21 @@ struct SwitcherView: View {
     let onHover: (String) -> Void
 
     var body: some View {
-        Group {
-            if model.mode == .applications { applications }
-            else { windows }
-        }
-        .frame(width: model.width, height: model.height)
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel(model.mode == .applications ? "应用切换器" : "窗口切换器")
+        iconPanel
+            .frame(width: model.width, height: model.height)
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(model.mode == .applications ? "应用切换器" : "窗口切换器")
     }
 
-    private var applications: some View {
+    private var iconPanel: some View {
         ScrollViewReader { proxy in
             ScrollView(model.isGrid ? .vertical : .horizontal) {
                 Group {
                     if model.isGrid {
-                        LazyVGrid(columns: Array(repeating: GridItem(.fixed(model.cellWidth), spacing: ApplicationLayout.iconGap), count: model.columns), spacing: ApplicationLayout.rowSpacing) {
-                            appItems
+                        LazyVGrid(columns: Array(repeating: GridItem(.fixed(model.cellWidth), spacing: ApplicationLayout.iconGap), count: model.columns), spacing: model.rowSpacing) {
+                            iconItems
                         }
-                    } else { HStack(spacing: ApplicationLayout.iconGap) { appItems } }
+                    } else { HStack(spacing: ApplicationLayout.iconGap) { iconItems } }
                 }
                 .padding(ApplicationLayout.padding)
             }
@@ -36,7 +33,7 @@ struct SwitcherView: View {
         }
     }
 
-    private var appItems: some View {
+    private var iconItems: some View {
         ForEach(Array(model.items.enumerated()), id: \.element.id) { index, item in
             Button { onSelect(item.id) } label: {
                 Image(nsImage: item.icon).resizable().interpolation(.high)
@@ -44,6 +41,25 @@ struct SwitcherView: View {
                     .background {
                         if index == model.index {
                             SelectionOutline().transition(.identity)
+                        }
+                    }
+                    .overlay(alignment: .top) {
+                        if let window = item.window {
+                            HStack(spacing: 4) {
+                                Text(window.spaceBadge ?? "?")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.75)
+                                if window.minimized {
+                                    Image(systemName: "minus.rectangle")
+                                        .font(.system(size: 10))
+                                }
+                            }
+                                .foregroundStyle(.secondary)
+                                .frame(width: model.iconSize, height: 14)
+                                .offset(y: -18)
+                                .help((window.spaceLabel ?? "位置未确认") + (window.minimized ? "，已最小化" : ""))
+                                .allowsHitTesting(false)
                         }
                     }
                     .frame(width: model.cellWidth, height: model.cellHeight)
@@ -60,57 +76,11 @@ struct SwitcherView: View {
             .onContinuousHover { phase in if case .active = phase { onHover(item.id) } }
             .id(item.id)
             .accessibilityLabel(item.title)
+            .accessibilityValue(item.window.map {
+                ($0.spaceLabel ?? "位置未确认") + ($0.minimized ? "，已最小化" : "")
+            } ?? "")
             .accessibilityAddTraits(index == model.index ? [.isSelected] : [])
         }
-    }
-
-    private var windows: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text(model.appName).font(.headline)
-                Spacer()
-                Text("\(model.items.count) 个窗口").font(.caption).foregroundStyle(.secondary)
-            }.padding(.horizontal, 8)
-            ScrollViewReader { proxy in
-                ScrollView(.vertical) {
-                    LazyVStack(spacing: 0) {
-                        ForEach(Array(model.items.enumerated()), id: \.element.id) { index, item in
-                            Button { onSelect(item.id) } label: {
-                                HStack(spacing: 12) {
-                                    Image(nsImage: item.icon).resizable().scaledToFit().frame(width: 28, height: 28)
-                                    Text(item.title).font(.system(size: 14, weight: index == model.index ? .medium : .regular))
-                                        .lineLimit(1).truncationMode(.middle)
-                                    Spacer(minLength: 6)
-                                    if item.window?.minimized == true {
-                                        Image(systemName: "minus.rectangle").help("已最小化")
-                                    }
-                                    if item.location == .other {
-                                        Label(item.window?.spaceLabel ?? "其他桌面", systemImage: "arrow.up.right").font(.caption)
-                                    } else if item.location == .unknown {
-                                        Text("位置未确认").font(.caption).foregroundStyle(.secondary)
-                                    }
-                                }
-                                .padding(.horizontal, 12).frame(height: 52)
-                                .background {
-                                    if index == model.index { RoundedRectangle(cornerRadius: 10).fill(.primary.opacity(0.13)) }
-                                }
-                                .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-                            .onContinuousHover { phase in if case .active = phase { onHover(item.id) } }
-                            .id(item.id)
-                            .accessibilityAddTraits(index == model.index ? [.isSelected] : [])
-                        }
-                    }
-                }
-                .scrollIndicators(.hidden)
-                .onChange(of: model.index) { _, value in
-                    guard model.shouldScrollSelection, model.items.indices.contains(value) else { return }
-                    proxy.scrollTo(model.items[value].id, anchor: .center)
-                }
-            }
-            Text("点击或松开 Option 切换 · Esc 取消").font(.caption).foregroundStyle(.secondary).padding(.horizontal, 8)
-        }.padding(16)
     }
 }
 

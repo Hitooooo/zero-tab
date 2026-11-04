@@ -54,19 +54,19 @@ enum SpaceProvider {
         }.map(\.id))
     }
 
-    static func placement(windowID: UInt32?, pid: pid_t, frame: CGRect?, snapshot: Snapshot) -> (SpaceLocation, String?, Set<UInt64>?) {
+    static func placement(windowID: UInt32?, pid: pid_t, frame: CGRect?, snapshot: Snapshot) -> (SpaceLocation, String?, Set<UInt64>?, String?) {
         let membership = ReadOnlySpaceBridge.shared.membership(of: windowID)
         if let topology = snapshot.topology {
             let location = topology.location(of: membership)
-            if location != .unknown { return (location, topology.label(of: membership), membership) }
+            if location != .unknown { return (location, topology.label(of: membership), membership, topology.badge(of: membership)) }
         }
-        guard let frame else { return (.unknown, nil, membership) }
+        guard let frame else { return (.unknown, nil, membership, nil) }
         let matches = snapshot.windows.filter {
             $0.pid == pid && $0.layer == 0 && $0.onScreen == true
                 && abs($0.frame.minX - frame.minX) < 2 && abs($0.frame.minY - frame.minY) < 2
                 && abs($0.frame.width - frame.width) < 2 && abs($0.frame.height - frame.height) < 2
         }
-        return (matches.count == 1 ? .current : .unknown, nil, membership)
+        return (matches.count == 1 ? .current : .unknown, nil, membership, nil)
     }
 
 }

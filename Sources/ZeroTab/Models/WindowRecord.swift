@@ -12,6 +12,7 @@ struct WindowRecord: Identifiable, @unchecked Sendable {
     let frame: CGRect?
     var location: SpaceLocation
     var spaceLabel: String?
+    var spaceBadge: String?
     var attention: UInt64
     var focused: Bool
 }

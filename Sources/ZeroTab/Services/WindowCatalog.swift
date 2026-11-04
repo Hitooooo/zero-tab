@@ -127,7 +127,7 @@ final class WindowCatalog: @unchecked Sendable {
                 id: previous?.id ?? UUID(), pid: pid, element: element, windowID: windowID,
                 title: title?.isEmpty == false ? title! : "未命名窗口 \(records.count + 1)",
                 minimized: minimizedValue ?? false,
-                frame: frame, location: placement.0, spaceLabel: placement.1,
+                frame: frame, location: placement.0, spaceLabel: placement.1, spaceBadge: placement.3,
                 attention: rank, focused: isFocused
             ))
         }
@@ -143,7 +143,8 @@ final class WindowCatalog: @unchecked Sendable {
             guard let ordinal = duplicateOrdinals[record.id] else { return record }
             return WindowRecord(id: record.id, pid: record.pid, element: record.element, windowID: record.windowID,
                 title: "\(record.title) · \(ordinal)", minimized: record.minimized,
-                frame: record.frame, location: record.location, spaceLabel: record.spaceLabel, attention: record.attention, focused: record.focused)
+                frame: record.frame, location: record.location, spaceLabel: record.spaceLabel, spaceBadge: record.spaceBadge,
+                attention: record.attention, focused: record.focused)
         }
         cache[pid] = records
         let current = records.filter { $0.location == .current }.count
