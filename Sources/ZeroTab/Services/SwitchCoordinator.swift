@@ -6,7 +6,11 @@ final class SwitchCoordinator {
     private var panelStorage: SwitcherPanelController?
     var panel: SwitcherPanelController {
         if let panelStorage { return panelStorage }
-        let created = SwitcherPanelController(); panelStorage = created; return created
+        let created = SwitcherPanelController(
+            onSelect: { [weak self] id in self?.selectItem(id: id) },
+            onHover: { [weak self] id in self?.hoverItem(id: id) }
+        )
+        panelStorage = created; return created
     }
     let catalog = WindowCatalog()
     private let activation = ActivationService()
@@ -162,17 +166,43 @@ final class SwitchCoordinator {
         panel.presentation.index = selection.index
         let buffered = pendingActions; pendingActions.removeAll()
         // A completed quick chord need not flash the panel while its AX query finishes.
-        if items.count > 1 && !buffered.contains(.commit) { panel.show(on: screen) }
+        if !items.isEmpty && !buffered.contains(.commit) { panel.show(on: screen) }
         for action in buffered {
             guard sessionActive else { break }
             apply(action)
         }
     }
 
+    @discardableResult
+    private func highlightItem(id: String) -> Bool {
+        guard (sessionActive && !loading) || previewing,
+              let index = panel.presentation.items.firstIndex(where: { $0.id == id }) else { return false }
+        selection = Selection(count: panel.presentation.items.count, columns: panel.presentation.columns, index: index)
+        panel.presentation.shouldScrollSelection = false
+        if panel.presentation.index != selection.index { panel.presentation.index = selection.index }
+        return true
+    }
+
+    private func hoverItem(id: String) {
+        let previous = selection.index
+        guard highlightItem(id: id), selection.index != previous else { return }
+        logger.debug("Pointer highlight changed; index=\(self.selection.index)")
+    }
+
+    private func selectItem(id: String) {
+        guard highlightItem(id: id) else { return }
+        // Preview only changes its highlight. Live clicks use the keyboard commit path,
+        // which ends the session before activation; a later modifier release is ignored.
+        if !previewing { apply(.commit) }
+    }
+
     private func apply(_ action: InputAction) {
         switch action {
-        case .cycle(let delta): selection.cycle(delta)
+        case .cycle(let delta):
+            panel.presentation.shouldScrollSelection = true
+            selection.cycle(delta)
         case .move(let direction):
+            panel.presentation.shouldScrollSelection = true
             selection.move(direction, linear: sessionMode == .windows || !panel.presentation.isGrid)
         case .commit:
             let items = panel.presentation.items
@@ -216,6 +246,7 @@ final class SwitchCoordinator {
         logger.info("Preview shown; visible=\(self.panel.isVisible), count=\(self.applications.count)")
         previewMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self, self.previewing else { return event }
+            self.panel.presentation.shouldScrollSelection = true
             switch event.keyCode {
             case 53: self.cancel()
             case 48: self.selection.cycle(event.modifierFlags.contains(.shift) ? -1 : 1)
@@ -233,7 +264,9 @@ final class SwitchCoordinator {
             guard let self, self.previewing else { return }
             self.clickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in self?.cancel() }
             self.localClickMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] event in
-                self?.cancel(); return event
+                guard let self else { return event }
+                if event.window !== self.panelStorage?.window { self.cancel() }
+                return event
             }
         }
     }

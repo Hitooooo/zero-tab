@@ -44,7 +44,7 @@ struct SettingsView: View {
                 LabeledContent("切换当前应用的窗口", value: "⌥ Tab")
                 LabeledContent("反向选择", value: "Shift + Tab")
                 LabeledContent("移动选择", value: "← ↑ ↓ →")
-                LabeledContent("确认 / 取消", value: "松开修饰键 / Esc")
+                LabeledContent("确认 / 取消", value: "点击或松开修饰键 / Esc")
             }
             Section("应用图标过多时") {
                 Picker("排列方式", selection: $preferences.overflow) {
