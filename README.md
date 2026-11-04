@@ -34,6 +34,12 @@ CONFIGURATION=release ./script/build_and_run.sh --verify
 
 应用图标使用蓝紫双卡片精修方案，构建时复制 `Resources/AppIcon.icns` 并通过 `CFBundleIconFile` 声明。打包签名后更新应用目录时间并强制刷新该 App 的 Launch Services 注册；启动时直接加载包内 ICNS 到 AppKit 的运行时图标，覆盖旧占位图。已打开的系统设置可能保留旧图标，本机实测退出并重新打开系统设置后恢复。调整图标后可用 `uv run --with pillow --with numpy python script/generate_app_icon.py --final cards` 再生成；Python 依赖仅用于设计期，运行和常规构建不需要。配套 `Resources/AppIcon-1024.png` 和 `Resources/AppIcon.svg`，当前为静态图标，尚未接入 Icon Composer 自适应外观。
 
+## GitHub Actions 自动构建
+
+[Build macOS App](https://github.com/Hitooooo/zero-tab/actions/workflows/build-macos.yml) 在推送到 `main`、向 `main` 提交 Pull Request 或手动点击 **Run workflow** 时运行。使用 GitHub 的 `xcode-27` Apple Silicon 运行器和 Xcode 27.1，先执行逻辑测试，再调用现有脚本生成 Release `ZeroTab.app`；检查 plist、签名、arm64 架构和图标资源后上传构建产物，保留 30 天。
+
+打开对应运行记录，在 **Artifacts** 下载 `ZeroTab-版本-构建号-macOS-arm64`。解压后包含 App ZIP、`SHA256SUMS.txt` 和 `BuildInfo.txt`；再解压 App ZIP 得到 `ZeroTab.app`，保留应用包结构和可执行权限。产物要求 Apple Silicon 与 macOS 27 或更新系统，使用临时签名，尚未配置 Developer ID 签名与公证。CI 的测试及打包通过不代表真实快捷键、权限、跨桌面或其他 GUI 兼容性验收通过。
+
 ## 使用
 
 - `⌘ Tab`：按最近使用顺序选择运行中的应用。

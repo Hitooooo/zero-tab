@@ -34,10 +34,12 @@ cp "$ROOT_DIR/Resources/AppIcon.icns" "$APP_BUNDLE/Contents/Resources/AppIcon.ic
 chmod +x "$APP_BUNDLE/Contents/MacOS/ZeroTab"
 # Use a local signing identity when configured; ad-hoc signing works for local development.
 /usr/bin/codesign --force --sign "${ZEROTAB_SIGN_IDENTITY:--}" "$APP_BUNDLE"
-# Rebuilding in place must invalidate the bundle metadata cached before an icon
-# was added. Refresh only this app's registration, including build-only output.
-/usr/bin/touch "$APP_BUNDLE"
-/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$APP_BUNDLE"
+# Refresh local icon metadata after rebuilding in place. CI only archives the
+# bundle and does not need to register it with a desktop session.
+if [[ "${CI:-false}" != true ]]; then
+  /usr/bin/touch "$APP_BUNDLE"
+  /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$APP_BUNDLE"
+fi
 case "$MODE" in
   --build-only) echo "$APP_BUNDLE" ;;
   run) /usr/bin/open "$APP_BUNDLE" ;;

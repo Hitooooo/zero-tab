@@ -1,0 +1,95 @@
+name: Build macOS App
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: macos-build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Release app (macOS 27, arm64)
+    runs-on: xcode-27
+    timeout-minutes: 20
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_27.1.app/Contents/Developer
+      CONFIGURATION: release
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Check build environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          sw_vers
+          xcodebuild -version
+          swift --version
+          sdk_version="$(xcrun --sdk macosx --show-sdk-version)"
+          [[ "${sdk_version%%.*}" -ge 27 ]] || { echo "macOS 27 SDK or later is required." >&2; exit 1; }
+          [[ "$(sw_vers -productVersion | cut -d. -f1)" -ge 27 ]] || { echo "Tests require macOS 27 or later." >&2; exit 1; }
+          [[ "$(uname -m)" == arm64 ]] || { echo "This artifact requires an arm64 runner." >&2; exit 1; }
+
+      - name: Run logic tests
+        run: ./script/test.sh
+
+      - name: Build Release app bundle
+        run: ./script/build_and_run.sh --build-only
+
+      - name: Validate and archive app
+        id: package
+        shell: bash
+        run: |
+          set -euo pipefail
+          app="dist/ZeroTab.app"
+          plutil -lint "$app/Contents/Info.plist"
+          codesign --verify --strict --verbose=2 "$app"
+          test -x "$app/Contents/MacOS/ZeroTab"
+          cmp Resources/AppIcon.icns "$app/Contents/Resources/AppIcon.icns"
+          lipo -verify_arch arm64 "$app/Contents/MacOS/ZeroTab"
+          version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Contents/Info.plist")"
+          build="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$app/Contents/Info.plist")"
+          artifact="ZeroTab-${version}-${build}-macOS-arm64"
+          mkdir -p dist/artifacts
+          ditto -c -k --sequesterRsrc --keepParent "$app" "dist/artifacts/${artifact}.zip"
+          (
+            cd dist/artifacts
+            shasum -a 256 "${artifact}.zip" > SHA256SUMS.txt
+          )
+          {
+            printf 'Commit: %s\nVersion: %s (%s)\nArchitecture: arm64\nConfiguration: Release\n' "$GITHUB_SHA" "$version" "$build"
+            sw_vers
+            xcodebuild -version
+            swift --version
+            printf '\nSigning: ad-hoc; not notarized. Requires macOS 27 or later.\n'
+          } > dist/artifacts/BuildInfo.txt
+          echo "name=$artifact" >> "$GITHUB_OUTPUT"
+          {
+            echo '### ZeroTab macOS app'
+            echo "- Version: ${version} (${build})"
+            echo "- Commit: ${GITHUB_SHA}"
+            echo '- Architecture: Apple Silicon (arm64); minimum macOS 27'
+            echo '- Release app bundle, ad-hoc signed; not notarized'
+            echo '- Download the artifact below, then extract its app ZIP.'
+            echo '- CI validates logic, build and packaging; GUI and shortcut behavior require separate testing.'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload app and checksums
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.package.outputs.name }}
+          path: dist/artifacts/
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
