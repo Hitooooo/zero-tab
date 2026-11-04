@@ -2,6 +2,13 @@
 
 日期：2026-11-04。已提交基线 0.1.0（`718c5eb`）；当前 0.1.1 build 17 应用图标刷新修正版。
 
+## GitHub Actions 自动构建
+
+- 新增 `.github/workflows/build-macos.yml`：推送 `main`、向 `main` 提交 PR 及 `workflow_dispatch` 可触发。使用 `xcode-27` arm64 运行器、Xcode 27.1，预检系统／SDK 版本与架构，执行逻辑测试，调用现有脚本生成 Release `.app`，校验 plist、签名、架构和图标，上传 App ZIP、SHA-256 和构建信息，保留 30 天。CI 无需桌面会话，跳过本地 Launch Services 注册。
+- 本机使用 `CI=true CONFIGURATION=release ./script/build_and_run.sh --build-only` 实际通过；执行工作流同一份打包步骤后，ZIP 约 828 KiB。已解压核对 App 严格签名和主程序可执行权限。该本机包使用本机 Xcode 27.0，不作为云端 Xcode 27.1 的构建证据。
+- 工作流提交为 `04f6fdf01007e9c060851d9e3b821f0a77bc9972`。已由 push 触发首次云端运行：[41860969155](https://github.com/Hitooooo/zero-tab/actions/runs/41860969155)。云端结果待该运行完成后记录。
+- 产物面向 Apple Silicon／macOS 27，临时签名，未进行 Developer ID 签名或公证。CI 不执行 GUI、辅助功能授权、真实快捷键及跨桌面兼容性验收。
+
 ## 当前构建：0.1.1 build 17
 
 - 用户截图中的 Dock 和系统设置应用预览仍为系统默认占位图。修复前检查确认包内 ICNS 与源文件 SHA-256 一致、10 个图像表示可读取，且正在运行的是项目 `dist/ZeroTab.app`；NSWorkspace 的文件图标已有双卡片，但当时 NSRunningApplication.icon 导出的图像为空，不能仅以包内资源存在判定运行时显示通过。
