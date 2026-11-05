@@ -11,15 +11,18 @@ final class AppModel: ObservableObject {
     var onRefresh: (() -> Void)?
     var onPauseChange: (() -> Void)?
     var onPreview: (() -> Void)?
-    private var refreshed = false
+    private let accessibilityCheck: () -> Bool
 
-    func refresh(force: Bool = false) {
-        let granted = AXIsProcessTrusted()
-        let changed = accessibilityGranted != granted || !refreshed
-        accessibilityGranted = granted
-        refreshed = true
+    init(accessibilityCheck: @escaping () -> Bool = { AXIsProcessTrusted() }) {
+        self.accessibilityCheck = accessibilityCheck
+    }
+
+    func refresh() {
+        accessibilityGranted = accessibilityCheck()
         preferences.refreshLoginStatus()
-        if changed || force { onRefresh?() }
+        // Permission can stay granted while the event tap has stopped or expired.
+        // Every explicit refresh must also reconcile the actual input service.
+        onRefresh?()
     }
 
     func requestAccessibility() {

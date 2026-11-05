@@ -1,14 +1,14 @@
 import SwiftUI
 import ZeroTabCore
 
-/// An ordinary selection outline composited with the material behind it.
+/// A filled selection backing composited with the material behind it.
 /// This is not another glass surface and never samples or stores screen images.
-struct SelectionOutline: NSViewRepresentable {
-    func makeNSView(context: Context) -> SelectionOutlineView { SelectionOutlineView() }
-    func updateNSView(_ view: SelectionOutlineView, context: Context) { view.needsDisplay = true }
+struct SelectionBackground: NSViewRepresentable {
+    func makeNSView(context: Context) -> SelectionBackgroundView { SelectionBackgroundView() }
+    func updateNSView(_ view: SelectionBackgroundView, context: Context) { view.needsDisplay = true }
 }
 
-final class SelectionOutlineView: NSView {
+final class SelectionBackgroundView: NSView {
     init() {
         super.init(frame: .zero)
         setAccessibilityElement(false)
@@ -22,11 +22,10 @@ final class SelectionOutlineView: NSView {
     override func draw(_ dirtyRect: NSRect) {
         let size = min(bounds.width, bounds.height)
         guard size > 0 else { return }
-        let geometry = SelectionOutlineGeometry(bounds: bounds)
+        let geometry = SelectionBackgroundGeometry(bounds: bounds)
         let path = NSBezierPath(cgPath: RoundedRectangle(cornerRadius: geometry.cornerRadius, style: .continuous)
-            .path(in: geometry.pathRect).cgPath)
-        path.lineWidth = geometry.lineWidth
-        NSColor.secondaryLabelColor.setStroke()
-        path.stroke()
+            .path(in: geometry.rect).cgPath)
+        NSColor.secondaryLabelColor.setFill()
+        path.fill()
     }
 }

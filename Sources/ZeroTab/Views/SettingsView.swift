@@ -78,7 +78,7 @@ struct SettingsView: View {
             }
             Section {
                 Button("打开输入监控设置", action: model.requestInputMonitoring)
-                Button("重新检查") { model.refresh(force: true) }
+                Button("重新检查") { model.refresh() }
                 Text("不采集窗口截图。其他桌面的窗口会标记并排在末尾；无法确认位置时单独标记。个别应用可能不提供完整窗口列表，跨桌面精确跳转仍需验证。")
                     .font(.caption).foregroundStyle(.secondary)
             }

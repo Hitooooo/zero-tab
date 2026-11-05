@@ -8,7 +8,8 @@ let package = Package(
     targets: [
         .target(name: "ZeroTabCore"),
         .executableTarget(name: "ZeroTab", dependencies: ["ZeroTabCore"]),
-        .testTarget(name: "ZeroTabCoreTests", dependencies: ["ZeroTabCore"])
+        .testTarget(name: "ZeroTabCoreTests", dependencies: ["ZeroTabCore"]),
+        .testTarget(name: "ZeroTabTests", dependencies: ["ZeroTab"])
     ],
     swiftLanguageModes: [.v5]
 )

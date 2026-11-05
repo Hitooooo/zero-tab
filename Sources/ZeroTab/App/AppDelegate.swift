@@ -11,6 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var statusItem: NSStatusItem?
     private var workspaceTokens: [NSObjectProtocol] = []
     private var refreshing = false
+    private var sleeping = false
     private var permissionTimer: Timer?
 
     func applicationWillFinishLaunching(_ notification: Notification) {
@@ -30,17 +31,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         model.onPreview = { [weak self] in self?.coordinator.preview() }
         input.onAction = { [weak self] in self?.coordinator.handle($0) }
         input.onInterrupted = { [weak self] in
-            self?.coordinator.cancel()
-            self?.model.lastFeedback = "键盘监听已恢复，本次选择已取消。"
+            guard let self else { return }
+            self.coordinator.cancel(); self.coordinator.cancelPendingActivation()
+            self.model.refresh()
+            self.model.lastFeedback = self.model.inputRunning
+                ? "键盘监听已恢复，本次选择已取消。"
+                : "键盘监听恢复失败，请检查权限后点击重新检查。"
         }
         applyAppearance()
         model.refresh()
         let center = NSWorkspace.shared.notificationCenter
         workspaceTokens.append(center.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { [weak self] _ in
-            self?.input.stop(); self?.coordinator.cancel(); self?.coordinator.cancelPendingActivation()
-            self?.model.inputRunning = false
+            guard let self else { return }
+            self.sleeping = true
+            self.refreshService()
+            self.logger.info("Input suspended for system sleep")
         })
-        workspaceTokens.append(center.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in self?.model.refresh() })
+        workspaceTokens.append(center.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
+            guard let self else { return }
+            self.sleeping = false
+            self.model.refresh()
+            self.logger.info("Input reconciled after system wake; running=\(self.model.inputRunning)")
+        })
         let loginLaunch = NSAppleEventManager.shared().currentAppleEvent?
             .paramDescriptor(forKeyword: AEKeyword(keyAEPropData))?.enumCodeValue == OSType(keyAELaunchedAsLogInItem)
         if !loginLaunch && !ProcessInfo.processInfo.arguments.contains("--background") { showSettings() }
@@ -66,13 +78,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         guard !refreshing else { return }
         refreshing = true
         defer { refreshing = false }
-        if model.paused || !model.accessibilityGranted {
+        if sleeping || model.paused || !model.accessibilityGranted {
             input.stop(); coordinator.cancel(); coordinator.cancelPendingActivation(); model.inputRunning = false
-            model.status = model.paused ? "切换已暂停" : "请先允许辅助功能权限"
+            model.status = sleeping ? "系统休眠，切换服务已停止"
+                : (model.paused ? "切换已暂停" : "请先允许辅助功能权限")
         } else {
             let running = input.start()
             model.inputRunning = running
             model.status = running ? "切换服务已启用" : "无法监听快捷键，请检查权限后重试"
+            if !running { coordinator.cancel(); coordinator.cancelPendingActivation() }
         }
         coordinator.permissionsChanged()
         updateStatusMenu()

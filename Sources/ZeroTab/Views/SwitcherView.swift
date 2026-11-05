@@ -40,7 +40,7 @@ struct SwitcherView: View {
                     .scaledToFit().frame(width: model.iconSize, height: model.iconSize)
                     .background {
                         if index == model.index {
-                            SelectionOutline().transition(.identity)
+                            SelectionBackground().transition(.identity)
                         }
                     }
                     .overlay(alignment: .top) {

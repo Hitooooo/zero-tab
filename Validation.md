@@ -1,6 +1,30 @@
 # ZeroTab 验证记录
 
-更新：2026-11-05。已提交基线 0.1.0（`718c5eb`）；当前 0.1.1 build 17 应用图标刷新修正版。
+更新：2026-11-06。已提交基线 0.1.0（`718c5eb`）；当前 0.1.1 build 20 选中底板宽度微调版本。
+
+## 0.1.1 build 20 选中底板外扩量微调
+
+- 按用户反馈，将 104 pt 图标时相对原描边外缘的每边外扩量从约 3.64 pt 减至 3 pt；内缩从 1.56 pt 调为 2.2 pt，圆角半径从 30.16 pt 同步减至 29.52 pt。缩小图标时按比例缩放；仍是完整填充的灰色底板。
+- 2026-11-06 用户确认当前 3 pt 外扩样式可以，要求与输入服务恢复修复一起提交并推送；该确认是外观验收，不代表休眠唤醒或长期运行稳定性已完成验收。
+- `./script/test.sh`：39 项通过、0 失败。`CONFIGURATION=release ./script/build_and_run.sh --verify` 完成 Release 构建、签名和实际 `.app` 启动，进程 93770；包内 build 为 20，签名严格校验、plist 及差异空白检查通过。本轮为尺寸微调，未重新渲染预览或验收真实背景；现有预览图对应 build 19。
+
+## 0.1.1 build 19 实心选中底板
+
+- 用户确认原生参考是“图标铺在大一圈的整块灰色背景上”，要求四周露出的灰色比原描边更宽。`SelectionOutline`／`SelectionOutlineGeometry` 改为 `SelectionBackground`／`SelectionBackgroundGeometry`，使用完整圆角路径填充，图标位于其上，不再描边或留透明内圈；继续使用原生 vibrancy 和系统 secondaryLabelColor，不叠加玻璃、不按主题硬切颜色。
+- 底板四边相对画布内缩从 5% 减至 1.5%，圆角半径从外轮廓的 25.5% 调为 29%。104 pt 图标时外缘四边各扩约 3.64 pt，56 pt 图标时各扩约 1.96 pt。图标尺寸、单元高度、名称、桌面指示器、面板留白与即时选择行为不变；应用和窗口面板共用此底板。
+- `./script/test.sh`：39 项通过、0 失败（36 项核心逻辑 + 3 项刷新回归）。移除已不适用的描边线宽测试，保留并迁移底板正方形及居中测试；测试结果不作为真实图标可见边距一致的证明。
+- 使用生产 `SwitcherView`、`SelectionBackgroundView`、布局及真实系统设置／邮件／Chrome 图标编译临时原生 `.app`，运行后渲染自身视图。邮件选中示例确认图标覆盖完整灰色底板中央、露出的灰色更宽，旧描边内侧的透明间隙消失，图标与名称正常。预览见 `dist/selection-preview/filled-background.png`，临时应用已自动退出。此图来自受控底色的自身视图渲染，不采集屏幕背景或其他窗口；不同真实背景、系统外观、缩小／多行与更多图标外形仍待实测，不宣称复刻了系统内部实现。
+- `CONFIGURATION=release ./script/build_and_run.sh --verify` 完成 Release 编译、打包与实际主应用启动，进程 90216；包内 build 为 19。签名严格校验、源／包内 plist 及 `git diff --check` 通过。本轮未重新执行实体键盘切换、休眠唤醒或资源占用验收；监听恢复修复保留，未推送 GitHub。
+
+## 0.1.1 build 18 输入服务恢复
+
+- 用户报告 GitHub 构建长期运行后切换失效，后台进程仍在，重启恢复；截图中存在“服务已启用”文字但图标为灰色的过期状态。静态排查确认：休眠回调停止输入并仅清除 `inputRunning`，唤醒调用 `model.refresh()` 却只在权限变化时通知服务恢复；权限不变时监听一直停止。该代码路径能够解释现象，尚未用用户故障当时的日志确认唯一触发条件。
+- 刷新权限时始终核对输入服务；休眠通过统一入口停止监听、取消选择与待激活任务并更新状态，睡眠期间设置刷新不会重新启动监听；唤醒后重新核对权限，暂停或权限不足仍禁止接管快捷键。
+- `InputService.start()` 检查 `CFMachPortIsValid` 和公开 [CGEvent.tapIsEnabled](https://developer.apple.com/documentation/coregraphics/cgevent/tapisenabled(tap:))，不再仅以对象存在判断成功；失效对象重建，创建失败时更新不可用状态并结束选择。按 Apple 的 [tapEnable](https://developer.apple.com/documentation/coregraphics/cgevent/tapenable(tap:enable:)) 恢复入口处理系统停用回调，核对结果，不无条件提示“已恢复”。补充监听生命周期日志，不记录按键文本、窗口标题或文档路径，不修改系统热键。
+- 工作线程启动前后都可安全停止 run loop；旧代监听排队到主线程的动作及恢复回调在停止／重建后作废。监听恢复前结束旧选择；不新增设置关闭后的轮询。
+- `./script/test.sh`：40 项通过、0 失败（既有 37 项核心逻辑 + 3 项 AppModel 刷新回归）。新增测试使用注入权限及模拟服务状态，覆盖权限不变的停止／恢复、失败重试入口及权限撤销／恢复；不代表真实事件 tap 或系统睡眠唤醒已验收。
+- 最终源码执行 `CONFIGURATION=release ./script/build_and_run.sh --verify`：Release 编译、打包、签名及通过 Launch Services 启动实际 `.app` 成功，进程检查为 84375，包内 build 为 18。`codesign --verify --strict --verbose=2`、源／包内 plist 及 `git diff --check` 通过。原生界面检查工具长时间等待后返回未找到运行中的应用，未确认当前设置页或权限状态，未将其记录为 GUI 通过；本轮未重新采样性能。
+- 待实机验收：已授权构建的真实睡眠／唤醒、多次循环、设置关闭后的长期运行、暂停中唤醒、系统停用 tap 后的恢复，以及恢复失败时系统快捷键回退。本轮不以模拟通知或“已启用”状态代替实体键盘验收。
 
 ## GitHub Actions 自动构建
 
