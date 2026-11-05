@@ -1,12 +1,14 @@
 # ZeroTab 验证记录
 
-日期：2026-11-04。已提交基线 0.1.0（`718c5eb`）；当前 0.1.1 build 17 应用图标刷新修正版。
+更新：2026-11-05。已提交基线 0.1.0（`718c5eb`）；当前 0.1.1 build 17 应用图标刷新修正版。
 
 ## GitHub Actions 自动构建
 
 - 新增 `.github/workflows/build-macos.yml`：推送 `main`、向 `main` 提交 PR 及 `workflow_dispatch` 可触发。使用 `xcode-27` arm64 运行器、Xcode 27.1，预检系统／SDK 版本与架构，执行逻辑测试，调用现有脚本生成 Release `.app`，校验 plist、签名、架构和图标，上传 App ZIP、SHA-256 和构建信息，保留 30 天。CI 无需桌面会话，跳过本地 Launch Services 注册。
 - 本机使用 `CI=true CONFIGURATION=release ./script/build_and_run.sh --build-only` 实际通过；执行工作流同一份打包步骤后，ZIP 约 828 KiB。已解压核对 App 严格签名和主程序可执行权限。该本机包使用本机 Xcode 27.0，不作为云端 Xcode 27.1 的构建证据。
-- 工作流提交为 `04f6fdf01007e9c060851d9e3b821f0a77bc9972`。已由 push 触发首次云端运行：[41860969155](https://github.com/Hitooooo/zero-tab/actions/runs/41860969155)。云端结果待该运行完成后记录。
+- 工作流提交为 `04f6fdf01007e9c060851d9e3b821f0a77bc9972`。首次 push 运行 [41860969155](https://github.com/Hitooooo/zero-tab/actions/runs/41860969155) 和用户随后手动触发的 [41865040820](https://github.com/Hitooooo/zero-tab/actions/runs/41865040820) 第 1 次尝试均未获得托管运行器，报 `The job was not acquired by Runner of type hosted even after multiple attempts`／`Internal server error`，没有执行测试或编译，不归类为源码构建失败。
+- 2026-11-05 09:18（Asia/Shanghai）通过网页重跑第 2 个运行的失败任务，未修改工作流或源码。第 2 次尝试成功分配运行器：macOS 27.0.1、Xcode 27.1、Swift 6.4；37 项测试通过、0 失败，Release 编译、plist／签名／架构／图标检查和上传均通过。09:20 上传完成，任务及整次运行最终为 `success`。
+- 云端产物 [ZeroTab-0.1.1-17-macOS-arm64](https://github.com/Hitooooo/zero-tab/actions/runs/41865040820/artifacts/13379542169) 为 844,921 字节，构建提交 `ed7fe6d422e59e83a8797031ba219d9a6dd5ed90`，保留至 2026-12-05。外层 artifact SHA-256 为 `0d8a70115ce291b8582f2fc8d6ea117d6bc9805335fb81e26126aaea71d5e6a2`；内部 App ZIP 的校验和见随包 `SHA256SUMS.txt`。
 - 产物面向 Apple Silicon／macOS 27，临时签名，未进行 Developer ID 签名或公证。CI 不执行 GUI、辅助功能授权、真实快捷键及跨桌面兼容性验收。
 
 ## 当前构建：0.1.1 build 17

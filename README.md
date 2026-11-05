@@ -40,6 +40,8 @@ CONFIGURATION=release ./script/build_and_run.sh --verify
 
 打开对应运行记录，在 **Artifacts** 下载 `ZeroTab-版本-构建号-macOS-arm64`。解压后包含 App ZIP、`SHA256SUMS.txt` 和 `BuildInfo.txt`；再解压 App ZIP 得到 `ZeroTab.app`，保留应用包结构和可执行权限。产物要求 Apple Silicon 与 macOS 27 或更新系统，使用临时签名，尚未配置 Developer ID 签名与公证。CI 的测试及打包通过不代表真实快捷键、权限、跨桌面或其他 GUI 兼容性验收通过。
 
+若任务没有任何构建步骤，报 `The job was not acquired by Runner of type hosted` 或运行器分配阶段的 `Internal server error`，说明 GitHub 没有成功分配机器，可在运行页面选择 **Re-run jobs → Re-run failed jobs**。本项目已在相同工作流重试后完成云端测试、构建和产物上传，实际结果见 [Validation.md](Validation.md)；已开始编译后的报错应按具体日志排查。
+
 ## 使用
 
 - `⌘ Tab`：按最近使用顺序选择运行中的应用。
