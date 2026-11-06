@@ -11,6 +11,8 @@ struct SelectionBackground: NSViewRepresentable {
 final class SelectionBackgroundView: NSView {
     init() {
         super.init(frame: .zero)
+        // Soften the system gray while preserving its native vibrancy response.
+        alphaValue = 0.7
         setAccessibilityElement(false)
     }
 
