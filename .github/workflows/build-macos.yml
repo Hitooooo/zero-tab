@@ -62,34 +62,46 @@ jobs:
           build="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$app/Contents/Info.plist")"
           artifact="ZeroTab-${version}-${build}-macOS-arm64"
           mkdir -p dist/artifacts
-          ditto -c -k --sequesterRsrc --keepParent "$app" "dist/artifacts/${artifact}.zip"
-          (
-            cd dist/artifacts
-            shasum -a 256 "${artifact}.zip" > SHA256SUMS.txt
-          )
+          staging="$(mktemp -d dist/package.XXXXXX)"
+          ditto "$app" "$staging/ZeroTab.app"
           {
             printf 'Commit: %s\nVersion: %s (%s)\nArchitecture: arm64\nConfiguration: Release\n' "$GITHUB_SHA" "$version" "$build"
             sw_vers
             xcodebuild -version
             swift --version
             printf '\nSigning: ad-hoc; not notarized. Requires macOS 27 or later.\n'
-          } > dist/artifacts/BuildInfo.txt
-          echo "name=$artifact" >> "$GITHUB_OUTPUT"
+          } > "$staging/BuildInfo.txt"
+          (
+            cd "$staging"
+            find ZeroTab.app -type f -exec shasum -a 256 {} + > SHA256SUMS.txt
+          )
+          ditto -c -k --sequesterRsrc "$staging" "dist/artifacts/${artifact}.zip"
+          # Validate the exact archive users receive, including executable permissions.
+          extracted="$(mktemp -d dist/extracted.XXXXXX)"
+          ditto -x -k "dist/artifacts/${artifact}.zip" "$extracted"
+          (
+            cd "$extracted"
+            shasum -a 256 -c SHA256SUMS.txt
+            codesign --verify --strict --verbose=2 ZeroTab.app
+            test -x ZeroTab.app/Contents/MacOS/ZeroTab
+          )
+          rm -rf "$staging" "$extracted"
+          echo "path=dist/artifacts/${artifact}.zip" >> "$GITHUB_OUTPUT"
           {
             echo '### ZeroTab macOS app'
             echo "- Version: ${version} (${build})"
             echo "- Commit: ${GITHUB_SHA}"
             echo '- Architecture: Apple Silicon (arm64); minimum macOS 27'
             echo '- Release app bundle, ad-hoc signed; not notarized'
-            echo '- Download the artifact below, then extract its app ZIP.'
+            echo '- Download the ZIP below and extract once to get ZeroTab.app, BuildInfo.txt and SHA256SUMS.txt.'
+            echo '- SHA256SUMS.txt checks the extracted app files; the artifact digest checks the downloaded ZIP.'
             echo '- CI validates logic, build and packaging; GUI and shortcut behavior require separate testing.'
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Upload app and checksums
+      - name: Upload ZIP directly (no outer archive)
         uses: actions/upload-artifact@v7
         with:
-          name: ${{ steps.package.outputs.name }}
-          path: dist/artifacts/
+          path: ${{ steps.package.outputs.path }}
+          archive: false
           if-no-files-found: error
           retention-days: 30
-          compression-level: 0

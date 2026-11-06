@@ -2,9 +2,9 @@
 
 原生 Swift 编写的 macOS 应用与窗口切换工具，最低 macOS 27。使用 SwiftUI 原生设置和 AppKit 毛玻璃浮动面板，无第三方依赖，不采集窗口截图。
 
-当前为开发版本。已实现输入、选择、窗口激活及可识别窗口的跨桌面归属；完整跨桌面枚举及四个目标应用兼容性尚未全部验收。真实检查结果与限制见 [Validation.md](Validation.md)。
+当前版本为 **1.0.0（build 22）**。用户反馈当前使用未发现问题，按此版本升级；已实现输入、选择、窗口激活及可识别窗口的跨桌面归属。完整跨桌面枚举及四个目标应用兼容性尚未全部验收，真实检查结果与限制见 [Validation.md](Validation.md)。
 
-当前 0.1.1 build 21 将灰色选中底板的整体合成不透明度降为 70%，让露出的灰色更浅、更通透；保留 build 20 的每边 3 pt 外扩及圆角形状；保留 build 18 的休眠唤醒与监听恢复修复、build 17 的图标刷新、build 16 的 ⌥ Tab 图标布局与桌面指示器，以及单层原生玻璃、系统前景对比、统一留白与即时选择。最近一次 39 项自动测试通过，其中 3 项覆盖权限未变化时仍检查服务及权限撤销／恢复的回归；旧描边线宽测试已移除，保留底板居中回归。真实睡眠唤醒及长期运行仍待验收，实际验证范围见 Validation.md。build 6 用户已确认：访达全部窗口关闭后，⌘ Tab 可恢复窗口并获得前台焦点；Chrome 的 ⌥ Tab 同桌面与跨桌面窗口列表、切换及焦点正常。其余应用特殊状态仍需逐项验收。0.1.0 基线 Release App 包约 0.87 MB，完成切换并打开设置时物理内存采样为 60 MB；这些性能数字未对当前版本重新测量。
+1.0.0 沿用 0.1.1 build 21 的应用行为与外观，包括 70% 不透明度、每边外扩 3 pt 的实心灰色选中底板、休眠唤醒与监听恢复修复、图标刷新、⌥ Tab 图标布局与桌面指示器。此次升级版本号，并将 GitHub 构建下载简化为一次解压。既有 39 项自动测试与各轮人工验证记录见 Validation.md；真实睡眠唤醒及长期运行仍待专项验收。0.1.0 基线 Release App 包约 0.87 MB，完成切换并打开设置时物理内存采样为 60 MB；这些性能数字未对当前版本重新测量。
 
 ## 构建与运行
 
@@ -38,7 +38,7 @@ CONFIGURATION=release ./script/build_and_run.sh --verify
 
 [Build macOS App](https://github.com/Hitooooo/zero-tab/actions/workflows/build-macos.yml) 在推送到 `main`、向 `main` 提交 Pull Request 或手动点击 **Run workflow** 时运行。使用 GitHub 的 `xcode-27` Apple Silicon 运行器和 Xcode 27.1，先执行逻辑测试，再调用现有脚本生成 Release `ZeroTab.app`；检查 plist、签名、arm64 架构和图标资源后上传构建产物，保留 30 天。
 
-打开对应运行记录，在 **Artifacts** 下载 `ZeroTab-版本-构建号-macOS-arm64`。解压后包含 App ZIP、`SHA256SUMS.txt` 和 `BuildInfo.txt`；再解压 App ZIP 得到 `ZeroTab.app`，保留应用包结构和可执行权限。产物要求 Apple Silicon 与 macOS 27 或更新系统，使用临时签名，尚未配置 Developer ID 签名与公证。CI 的测试及打包通过不代表真实快捷键、权限、跨桌面或其他 GUI 兼容性验收通过。
+打开对应运行记录，在 **Artifacts** 下载 `ZeroTab-版本-构建号-macOS-arm64.zip`。**解压一次即可得到 `ZeroTab.app`**，同目录包含 `SHA256SUMS.txt` 和 `BuildInfo.txt`；将 App 拖入“应用程序”即可安装。工作流使用 `upload-artifact@v7` 的 `archive: false` 直接上传 ZIP，不再添加外层压缩包，保留应用包结构和可执行权限；上传前会实际解压并核对文件校验和、签名及主程序可执行权限。在解压目录运行 `shasum -a 256 -c SHA256SUMS.txt` 可检查 App 文件；GitHub 产物的 Digest 为下载 ZIP 本身的 SHA-256。此方式从 1.0.0 build 22 开始，旧构建产物仍保留原有双层压缩结构。产物要求 Apple Silicon 与 macOS 27 或更新系统，使用临时签名，尚未配置 Developer ID 签名与公证。CI 的测试及打包通过不代表真实快捷键、权限、跨桌面或其他 GUI 兼容性验收通过。
 
 若任务没有任何构建步骤，报 `The job was not acquired by Runner of type hosted` 或运行器分配阶段的 `Internal server error`，说明 GitHub 没有成功分配机器，可在运行页面选择 **Re-run jobs → Re-run failed jobs**。本项目已在相同工作流重试后完成云端测试、构建和产物上传，实际结果见 [Validation.md](Validation.md)；已开始编译后的报错应按具体日志排查。
 

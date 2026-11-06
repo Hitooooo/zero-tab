@@ -1,7 +1,7 @@
 # ZeroTab 需求与设计
 
 日期：2026-11-06
-状态：需求基线与原生 Swift 开发版本；实际完成状态和实测结果见 [Validation.md](Validation.md)。
+状态：需求基线；当前原生 Swift 版本为 1.0.0（build 22），由用户确认当前使用未发现问题后升级版本号；实际完成状态和实测结果见 [Validation.md](Validation.md)。
 ⌘ Tab 选中层按用户最新要求改为更宽的实心灰色底板；⌥ Tab 复用同一图标布局与底板，在图标正上方的留白显示桌面指示器。实际验证范围见 Validation.md。
 项目工作名：ZeroTab，来自目录名称，最终展示名称可调整。
 

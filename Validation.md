@@ -1,6 +1,14 @@
 # ZeroTab 验证记录
 
-更新：2026-11-06。已提交基线 0.1.0（`718c5eb`）；当前 0.1.1 build 21 选中底板透明度微调版本。
+更新：2026-11-06。已提交基线 0.1.0（`718c5eb`）；当前 1.0.0 build 22。
+
+## 1.0.0 build 22 版本升级与单层下载包
+
+- 用户反馈当前版本使用未发现问题，要求升级为 1.0.0；`CFBundleShortVersionString` 更新为 `1.0.0`，`CFBundleVersion` 从 21 递增至 22。应用源码与交互沿用 build 21；此反馈不替代下文尚未执行的专项验收。
+- GitHub 工作流改用 `upload-artifact@v7` 的 `archive: false`，直接上传单个 `ZeroTab-1.0.0-22-macOS-arm64.zip`，避免 Actions 再包一层 ZIP。下载后解压一次即可得到 `ZeroTab.app`、`BuildInfo.txt` 和 `SHA256SUMS.txt`。校验文件现在用于检查解压后的 App 文件；下载 ZIP 本身可与 GitHub 展示的 artifact Digest 核对。旧构建产物不受影响。
+- 工作流上传前增加实际解压检查：核对 App 文件 SHA-256、严格签名及主程序可执行权限。工作流 YAML 解析、`archive: false` 配置检查、打包 shell 语法、源与包内 plist 一致性及 `git diff --check` 通过。
+- 本机 macOS 27.2、Xcode 27.2、Apple Silicon，执行 `CI=true CONFIGURATION=release ./script/build_and_run.sh --build-only` 成功；随后直接执行从工作流提取的同一份打包步骤，原 App 与解压后 App 的严格签名、arm64 架构、图标及文件校验均通过。ZIP 为 852,176 字节，顶层内容为 App 和两个 TXT 文件，无嵌套 ZIP，包内版本为 1.0.0（22）。本地 BuildInfo 的 Commit 标为 `local-working-tree`，不作为 GitHub 已提交构建证据。
+- 此轮只修改版本与打包流程，未新增或重跑应用逻辑测试；最近一次 39 项测试通过的记录见 build 20。未启动或重新验收 GUI、快捷键、休眠唤醒及性能；本轮本地验证未触发新的 GitHub 构建，云端直接下载仍待后续验证。
 
 ## 0.1.1 build 21 选中底板透明度微调
 
